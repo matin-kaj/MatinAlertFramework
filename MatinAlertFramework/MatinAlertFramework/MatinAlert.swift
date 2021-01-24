@@ -35,25 +35,25 @@ open class MatinAlert: UIViewController {
     }
 
     public struct CustomTextStyle {
-        var alignment: NSTextAlignment?
-        var bgColor: UIColor?
-        var color: UIColor?
-        var font: UIFont?
+        public var alignment: NSTextAlignment?
+        public var bgColor: UIColor?
+        public var color: UIColor?
+        public var font: UIFont?
         public init() {}
     }
 
     public struct CustomButtonStyle {
-        var font: UIFont?
-        var bgColor: UIColor?
-        var titleColor: UIColor?
+        public var font: UIFont?
+        public var bgColor: UIColor?
+        public var titleColor: UIColor?
         public init() {}
     }
 
     public struct CustomViewStyle {
-        var color: UIColor?
-        var borderWidth: CGFloat?
-        var borderColor: UIColor?
-        var cornerRadius: CGFloat?
+        public var color: UIColor?
+        public var borderWidth: CGFloat?
+        public var borderColor: UIColor?
+        public var cornerRadius: CGFloat?
         public init() {}
     }
 
@@ -73,7 +73,7 @@ open class MatinAlert: UIViewController {
     fileprivate var alertData: MatinAlertModel?
     fileprivate var alertStyle: CustomStyle?
     
-    init() {
+    public required init() {
         super.init(nibName: nil, bundle: nil)
         self.view.frame = UIScreen.main.bounds
         self.view.autoresizingMask = [
