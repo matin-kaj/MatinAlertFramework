@@ -8,61 +8,60 @@
 import Foundation
 import UIKit
 
+public enum ButtonKind {
+    case confirm
+    case cancel
+}
+
+public enum AlertType {
+    case success
+    case error
+    case warning
+    case info
+    case predefined
+    case custom(style: CustomStyle)
+}
+
+public struct CustomTextStyle {
+    var alignment: NSTextAlignment?
+    var bgColor: UIColor?
+    var color: UIColor?
+    var font: UIFont?
+}
+
+public struct CustomButtonStyle {
+    var font: UIFont?
+    var bgColor: UIColor?
+    var titleColor: UIColor?
+}
+
+public struct CustomViewStyle {
+    var color: UIColor?
+    var borderWidth: CGFloat?
+    var borderColor: UIColor?
+    var cornerRadius: CGFloat?
+}
+
+public struct CustomStyle {
+    var topHeaderView: CustomViewStyle?
+    var contentView: CustomViewStyle?
+    var topHeaderText: CustomTextStyle?
+    var contentText: CustomTextStyle?
+    var firstButton: CustomButtonStyle?
+    var secondButton: CustomButtonStyle?
+}
 
 public protocol MatinAlertDelegate: NSObjectProtocol {
-    func buttonClicked(buttonKind: MatinAlert.ButtonKind)
+    func buttonClicked(buttonKind: ButtonKind)
 }
 
 private class MatinAlertDefaultStyle: NSObject {
     static let sharedInstance = MatinAlertDefaultStyle()
     private override init() { }
-    var defaultAlertStyle: MatinAlert.CustomStyle?
+    var defaultAlertStyle: CustomStyle?
 }
 
 open class MatinAlert: UIViewController {
-    public enum ButtonKind {
-        case confirm
-        case cancel
-    }
-
-    public enum AlertType {
-        case success
-        case error
-        case warning
-        case info
-        case predefined
-        case custom(style: CustomStyle)
-    }
-
-    public struct CustomTextStyle {
-        var alignment: NSTextAlignment?
-        var bgColor: UIColor?
-        var color: UIColor?
-        var font: UIFont?
-    }
-
-    public struct CustomButtonStyle {
-        var font: UIFont?
-        var bgColor: UIColor?
-        var titleColor: UIColor?
-    }
-
-    public struct CustomViewStyle {
-        var color: UIColor?
-        var borderWidth: CGFloat?
-        var borderColor: UIColor?
-        var cornerRadius: CGFloat?
-    }
-    
-    public struct CustomStyle {
-        var topHeaderView: MatinAlert.CustomViewStyle?
-        var contentView: MatinAlert.CustomViewStyle?
-        var topHeaderText: MatinAlert.CustomTextStyle?
-        var contentText: MatinAlert.CustomTextStyle?
-        var firstButton: MatinAlert.CustomButtonStyle?
-        var secondButton: MatinAlert.CustomButtonStyle?
-    }
-    
     var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
     fileprivate var matinAlertView: MatinAlertView!
     fileprivate let overlayView = UIView()
@@ -315,7 +314,7 @@ private class MatinAlertView: UIView {
         : deviceHeight - deviceWidth
     private var contentHeight = CGFloat(50)
     
-    fileprivate var customStyle: MatinAlert.CustomStyle? {
+    fileprivate var customStyle: CustomStyle? {
         didSet {
             if let topHeaderView = customStyle?.topHeaderView {
                 if let color = topHeaderView.color {
@@ -381,7 +380,7 @@ private class MatinAlertView: UIView {
                 topHeaderTitleLabel.text = topTitle
                 if topTitle.isBlank {
                     topBoxHeight = CGFloat(0)
-                    var contentText = MatinAlert.CustomTextStyle()
+                    var contentText = CustomTextStyle()
                     contentText.alignment = .center
                     contentTableView.customTextStyle = contentText
                 }
@@ -633,7 +632,7 @@ fileprivate class MatinAlertContentCell: UITableViewCell {
     
     fileprivate func configure(
         with data: MatinAlertModel,
-        textStyle: MatinAlert.CustomTextStyle?) {
+        textStyle: CustomTextStyle?) {
         contentLabel.text = data.contentText
         if let alignment = textStyle?.alignment {
             contentLabel.textAlignment = alignment
@@ -687,7 +686,7 @@ fileprivate class MatinAlertContentTableView:
     UITableViewDelegate,
     UITableViewDataSource {
     private let tableViewCellId = "tableViewCellId"
-    fileprivate var customTextStyle: MatinAlert.CustomTextStyle? {
+    fileprivate var customTextStyle: CustomTextStyle? {
         didSet {
             if let bgColor = customTextStyle?.bgColor {
                 self.backgroundColor = bgColor
