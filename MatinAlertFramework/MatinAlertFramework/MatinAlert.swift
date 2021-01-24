@@ -9,169 +9,242 @@ import Foundation
 import UIKit
 
 
-/** The MatinAlertDelegate protocol. Used to receive life cycle events. */
-@objc public protocol MatinAlertDelegate: NSObjectProtocol {
-    @objc optional func firstButtonClicked(for view: MatinAlertView)
-    @objc optional func secondButtonClicked(for view: MatinAlertView)
-    @objc optional func textfieldChanged(for view: MatinAlertView, text: String?)
+public protocol MatinAlertDelegate: NSObjectProtocol {
+    func buttonClicked(buttonKind: MatinAlert.ButtonKind)
+}
+
+private class MatinAlertDefaultStyle: NSObject {
+    static let sharedInstance = MatinAlertDefaultStyle()
+    private override init() { }
+    var defaultAlertStyle: MatinAlert.CustomStyle?
 }
 
 open class MatinAlert: UIViewController {
-    var matinAlertView: MatinAlertView!
-    let blackView = UIView()
-    var alertModel: AlertModel? {
-        didSet {
-            setupViews()
-            setupKeyboardObservers()
-        }
+    public enum ButtonKind {
+        case confirm
+        case cancel
     }
-    var firstButtonClicked: ((_ view: MatinAlertView?) -> Void)?
-    var secondButtonClicked: ((_ view: MatinAlertView?) -> Void)?
-    var textFieldChanged: ((_ view: MatinAlertView?, _ text: String) -> Void)?
+
+    public enum AlertType {
+        case success
+        case error
+        case warning
+        case info
+        case predefined
+        case custom(style: CustomStyle)
+    }
+
+    public struct CustomTextStyle {
+        var alignment: NSTextAlignment?
+        var bgColor: UIColor?
+        var color: UIColor?
+        var font: UIFont?
+    }
+
+    public struct CustomButtonStyle {
+        var font: UIFont?
+        var bgColor: UIColor?
+        var titleColor: UIColor?
+    }
+
+    public struct CustomViewStyle {
+        var color: UIColor?
+        var borderWidth: CGFloat?
+        var borderColor: UIColor?
+        var cornerRadius: CGFloat?
+    }
     
-    open override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor =
+    public struct CustomStyle {
+        var topHeaderView: MatinAlert.CustomViewStyle?
+        var contentView: MatinAlert.CustomViewStyle?
+        var topHeaderText: MatinAlert.CustomTextStyle?
+        var contentText: MatinAlert.CustomTextStyle?
+        var firstButton: MatinAlert.CustomButtonStyle?
+        var secondButton: MatinAlert.CustomButtonStyle?
+    }
+    
+    var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
+    fileprivate var matinAlertView: MatinAlertView!
+    fileprivate let overlayView = UIView()
+    fileprivate var strongSelf: MatinAlert?
+    fileprivate var alertData: MatinAlertModel?
+    fileprivate var alertStyle: CustomStyle?
+    
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        self.view.frame = UIScreen.main.bounds
+        self.view.autoresizingMask = [
+            UIView.AutoresizingMask.flexibleHeight,
+            UIView.AutoresizingMask.flexibleWidth]
+        self.view.backgroundColor =
             UIColor.grayScale1().withAlphaComponent(0.7)
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil)
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil)
-    }
-    
-    func setupKeyboardObservers() {
+        strongSelf = self
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleKeyboardWillShow),
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil)
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleKeyboardWillHide),
-            name: UIResponder.keyboardWillHideNotification,
+            selector: #selector(deviceRotated),
+            name: UIDevice.orientationDidChangeNotification,
             object: nil)
     }
     
-    @objc func handleKeyboardWillShow(notification: NSNotification) {
-        guard  let keyboardFrame =
-                (notification.userInfo?[
-                    UIResponder.keyboardFrameEndUserInfoKey
-                ]
-                as AnyObject).cgRectValue,
-               let keyboardDuration =
-                (notification.userInfo?[
-                    UIResponder.keyboardAnimationDurationUserInfoKey
-                ]
-                as AnyObject).doubleValue else { return }
-        
-        if self.blackView.frame.origin.y == 0 {
-            var pushUp = keyboardFrame.height -
-                ((blackView.frame.height - matinAlertView.frame.height) / 2)
-            UIView.animate(withDuration: keyboardDuration,
-                           animations: { [weak self] in
-                            guard let unwrappedSelf = self else { return }
-                            pushUp += 5
-                            if pushUp > 0 {
-                                unwrappedSelf
-                                    .blackView
-                                    .frame
-                                    .origin
-                                    .y -= pushUp
-                                unwrappedSelf
-                                    .view
-                                    .layoutIfNeeded()
-                            }
-                           }
-            )
+    @objc private func deviceRotated() {
+        dismissAlert(completion: { [weak self] in
+            guard let unwrappedSelf = self else { return }
+            unwrappedSelf.setupViews()
+        }, animated: false)
+    }
+    
+    public static func setDefaultStyle(customStyle: CustomStyle) {
+        MatinAlertDefaultStyle.sharedInstance.defaultAlertStyle = customStyle
+    }
+    
+    required public init(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    open func showAlert(
+        withContent text: String,
+        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> MatinAlert {
+        showAlert("",
+                  contentText: text,
+                  alertType: .info,
+                  firstButtonTitle: nil, secondButtonTitle: nil)
+        return self
+    }
+    
+    open func showAlert(
+        _ title: String,
+        contentText: String?,
+        alertType: AlertType? = nil,
+        firstButtonTitle: String? = nil,
+        secondButtonTitle: String? = nil,
+        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> MatinAlert {
+        showAlert(
+            title,
+            contentText: contentText,
+            alertType: alertType ?? .info,
+            firstButtonTitle: firstButtonTitle,
+            secondButtonTitle: secondButtonTitle)
+        return self
+    }
+    
+    private func showAlert(
+        _ title: String,
+        contentText: String?,
+        alertType: AlertType,
+        firstButtonTitle: String?,
+        secondButtonTitle: String?,
+        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
+        buttonAction = action
+        if let window: UIWindow =
+            UIApplication.shared.windows.filter({$0.isKeyWindow}).first {
+            window.addSubview(view)
+            window.bringSubviewToFront(view)
+            view.frame = window.bounds
+            let data = MatinAlertModel()
+            data.topTitle = title
+            data.contentText = contentText ?? ""
+            data.firstButtonTitle = firstButtonTitle ?? "OK"
+            data.secondButtonTitle = secondButtonTitle
+            data.topTitle = title
+            alertData = data
+            alertStyle = getStyle(for: alertType)
+            setupViews()
         }
     }
     
-    @objc func handleKeyboardWillHide(notification: NSNotification) {
-        guard  let keyboardFrame =
-                (notification.userInfo?[
-                    UIResponder.keyboardFrameEndUserInfoKey
-                ]
-                as AnyObject).cgRectValue,
-               let keyboardDuration =
-                (notification.userInfo?[
-                    UIResponder.keyboardAnimationDurationUserInfoKey
-                ]
-                as AnyObject).doubleValue else { return }
-        if self.blackView.frame.origin.y != 0 {
-            var pushDown = keyboardFrame.height -
-                (
-                    (blackView.frame.height -
-                        matinAlertView.frame.height) / 2
-                )
-            UIView.animate(withDuration: keyboardDuration,
-                           animations: { [weak self] in
-                            guard let unwrappedSelf = self else { return }
-                            pushDown += 5
-                            if pushDown > 0 {
-                                unwrappedSelf.blackView.frame.origin.y += pushDown
-                                unwrappedSelf.view.layoutIfNeeded()
-                            }
-                           })
+    private func getStyle(for alertType: AlertType ) -> CustomStyle {
+        var topHeaderView = CustomViewStyle()
+        var customStyle = CustomStyle()
+        switch alertType {
+        case .success:
+            topHeaderView.color = UIColor.systemGreen
+            customStyle.topHeaderView = topHeaderView
+            return customStyle
+        case .error:
+            topHeaderView.color = UIColor.systemRed
+            customStyle.topHeaderView = topHeaderView
+            return customStyle
+        case .warning:
+            topHeaderView.color = UIColor.systemOrange
+            customStyle.topHeaderView = topHeaderView
+            return customStyle
+        case .info:
+            topHeaderView.color = UIColor.blueMain()
+            customStyle.topHeaderView = topHeaderView
+            return customStyle
+        case .predefined:
+            if let defaultAlertStyle =
+                MatinAlertDefaultStyle.sharedInstance.defaultAlertStyle {
+                return setDarkModeForCustomStyle(userCustomStyle: defaultAlertStyle)
+            } else {
+                print("MatinAlert: You need to call MatinAlert.setDefaultStyle before calling showAlert")
+                return getStyle(for: .info)
+            }
+        case let .custom(userCustomStyle):
+            return setDarkModeForCustomStyle(userCustomStyle: userCustomStyle)
         }
     }
     
-    @objc override func dismissKeyboard(gesture: UIGestureRecognizer) {
-        matinAlertView.textField.resignFirstResponder()
+    private func setDarkModeForCustomStyle(
+        userCustomStyle: CustomStyle) -> CustomStyle {
+        var customStyle = CustomStyle()
+        customStyle = userCustomStyle
+        if let contentViewBackground = customStyle.contentView?.color {
+            if customStyle.contentText?.bgColor == nil {
+                if customStyle.contentText == nil {
+                    var contentText = CustomTextStyle()
+                    contentText.bgColor = contentViewBackground
+                    customStyle.contentText = contentText
+                } else {
+                    customStyle.contentText?.bgColor = contentViewBackground
+                }
+            }
+        }
+        return customStyle
     }
     
-    func setupViews() {
-        guard let _ = alertModel else { return }
-        
+    private func setupViews() {
         if let window = UIApplication.shared.windows.filter({$0.isKeyWindow}).first {
             window.endEditing(true)
-            blackView.backgroundColor = UIColor(white: 0, alpha: 0.6)
-            blackView.tag = 99999
-            window.addSubview(blackView)
-            blackView.frame = window.frame
-            blackView.alpha = 0
-            blackView.addGestureRecognizer(
+            overlayView.backgroundColor = UIColor(white: 0, alpha: 0.65)
+            window.addSubview(overlayView)
+            matinAlertView = MatinAlertView()
+            matinAlertView.customStyle = alertStyle
+            matinAlertView.data = alertData
+            matinAlertView.delegate = self
+            overlayView.addSubview(matinAlertView)
+            overlayView.frame = window.frame
+            overlayView.alpha = 0
+            overlayView.addGestureRecognizer(
                 UITapGestureRecognizer(
                     target: self,
                     action: #selector(dismissKeyboard)
                 ))
             
-            matinAlertView = MatinAlertView()
-            matinAlertView.delegate = self
-            matinAlertView.alertModel = alertModel
-            blackView.addSubview(matinAlertView)
-            
             matinAlertView.translatesAutoresizingMaskIntoConstraints = false
             let horizontalConstraint =
                 matinAlertView.centerXAnchor.constraint(
-                    equalTo: blackView.centerXAnchor)
+                    equalTo: overlayView.centerXAnchor)
             let verticalConstraint =
                 matinAlertView.centerYAnchor.constraint(
-                    equalTo: blackView.centerYAnchor)
+                    equalTo: overlayView.centerYAnchor)
             NSLayoutConstraint.activate(
                 [
                     horizontalConstraint, verticalConstraint
                 ])
-            matinAlertView.tag = 55555
             matinAlertView.transform =
-                CGAffineTransform.init(scaleX: 0.8, y: 0.8)
+                CGAffineTransform.init(scaleX: 0.7, y: 0.7)
             matinAlertView.alpha = 0
             
             UIView.animate(
-                withDuration: 0.5,
+                withDuration: 0.65,
                 delay: 0,
                 usingSpringWithDamping: 1,
                 initialSpringVelocity: 1,
                 options: .curveEaseOut,
                 animations: { [weak self] in
                     guard let unwrappedSelf = self else { return }
-                    unwrappedSelf.blackView.alpha = 1
+                    unwrappedSelf.overlayView.alpha = 1
                     unwrappedSelf.matinAlertView.alpha = 1
                     unwrappedSelf.matinAlertView.transform =
                         CGAffineTransform.identity
@@ -179,426 +252,174 @@ open class MatinAlert: UIViewController {
         }
     }
     
-    func dismissViews() {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil)
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil)
-        
-        if let window = UIApplication.shared.windows.filter(
-            {$0.isKeyWindow}).first {
-            for view in window.subviews {
-                if view.tag == 55555 || view.tag == 99999 {
-                    UIView.animate(
-                        withDuration: 0.6,
-                        animations: { [weak self] in
-                            guard let unwrappedSelf = self else { return }
-                            unwrappedSelf.blackView.alpha = 0
-                            view.removeFromSuperview()
-                        }
-                    ) { [weak self] (_) in
-                        guard let unwrappedSelf = self else { return }
-                        unwrappedSelf.matinAlertView.alertModel = nil
-                        unwrappedSelf.matinAlertView = nil
-                        unwrappedSelf.alertModel = nil
-                        unwrappedSelf.dismiss(animated: true, completion: nil)
+    
+    private func dismissAlert(
+        completion: (() -> Void)? = nil,
+        animated: Bool? = true) {
+        if (animated ?? true) {
+            UIView.animate(
+                withDuration: 0.2,
+                animations: { [weak self] in
+                    guard let unwrappedSelf = self else { return }
+                    unwrappedSelf.matinAlertView.transform =
+                        CGAffineTransform.init(scaleX: 0.8, y: 0.8)
+                    unwrappedSelf.matinAlertView.alpha = 0
+                }, completion: { _ in
+                    self.view.removeFromSuperview()
+                    self.overlayView.removeFromSuperview()
+                    if completion != nil {
+                        completion!()
                     }
                 }
+            )
+        } else {
+            self.matinAlertView.alpha = 0
+            self.view.removeFromSuperview()
+            self.overlayView.removeFromSuperview()
+            if completion != nil {
+                completion!()
             }
         }
+    }
+    
+    private func cleanUp() -> Void {
+        self.matinAlertView = nil
+        self.strongSelf = nil
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil)
     }
 }
 
 extension MatinAlert: MatinAlertDelegate {
-    public func textfieldChanged(
-        for view: MatinAlertView,
-        text: String?) {
-        if text != nil {
-            textFieldChanged?(view, text!)
+    public func buttonClicked(buttonKind: ButtonKind) {
+        dismissAlert()
+        cleanUp()
+        if buttonAction != nil {
+            buttonAction!(buttonKind)
         }
-    }
-    
-    public func firstButtonClicked(for view: MatinAlertView) {
-        firstButtonClicked(for: view)
-    }
-    
-    public func secondButtonClicked(for view: MatinAlertView) {
-        secondButtonClicked(for: view)
     }
 }
 
-
-public struct AlertModel {
-    var topBoxViewColor: UIColor?
-    var topTitle: String?
-    var topTitleColor: UIColor?
-    var topTitleFont: UIFont?
+private class MatinAlertView: UIView {
+    fileprivate weak var delegate: MatinAlertDelegate?
+    private var contentTableView = MatinAlertContentTableView()
+    private let mainBoxWidth = CGFloat(300)
+    private var topBoxHeight = CGFloat(50)
+    private var bottomBoxHeight = CGFloat(45)
+    private lazy var deviceHeight = UIScreen.main.bounds.size.height
+    private lazy var deviceWidth = UIScreen.main.bounds.size.width
+    private lazy var maxContentHeight = UIDevice.current.orientation.isLandscape
+        ? deviceHeight - (deviceHeight / 2)
+        : deviceHeight - deviceWidth
+    private var contentHeight = CGFloat(50)
     
-    var title: String?
-    var titleColor: UIColor?
-    var titleFont: UIFont?
-    var titleTextAlignment: NSTextAlignment?
-    
-    var contentTextViewText: String?
-    var contentTextViewColor: UIColor?
-    var contentTextViewFont: UIFont?
-    var contentTextViewAttributed: NSAttributedString?
-    
-    var subTitle: String?
-    var subTitleColor: UIColor?
-    var subTitleFont: UIFont?
-    var subTitleTextAlignment: NSTextAlignment?
-    
-    var firstButtonText: String?
-    var firstButtonBackgroundColor: UIColor?
-    var firstButtonTextColor: UIColor?
-    var firstButtonFont: UIFont?
-    
-    var secondButtonText: String?
-    var secondButtonBackgroundColor: UIColor?
-    var secondButtonTextColor: UIColor?
-    var secondButtonFont: UIFont?
-    
-    var textFieldTitle: String?
-    var textFieldTitleColor: UIColor?
-    var textFieldTitleFont: UIFont?
-    var textFieldTitleTextAlignment: NSTextAlignment?
-    
-    var hasTextField: Bool?
-    var textFieldPlaceHolder: String?
-    var textFieldKeyboardType: UIKeyboardType?
-    
-    var textFieldTitleInvisible: Bool?
-    var textFieldInvisible: Bool?
-    var textFieldText: String?
-    
-    init(
-        topBoxViewColor: UIColor? = nil,
-        topTitle: String? = nil,
-        topTitleColor: UIColor? = nil,
-        topTitleFont: UIFont? = nil,
-        title: String? = nil,
-        titleColor: UIColor? = nil,
-        titleFont: UIFont? = nil,
-        titleTextAlignment: NSTextAlignment? = nil,
-        contentTextViewText: String? = nil,
-        contentTextViewColor: UIColor? = nil,
-        contentTextViewFont: UIFont? = nil,
-        contentTextViewAttributed: NSAttributedString? = nil,
-        subTitle: String? = nil,
-        subTitleColor: UIColor? = nil,
-        subTitleFont: UIFont? = nil,
-        subTitleTextAlignment: NSTextAlignment? = nil,
-        firstButtonText: String? = nil,
-        firstButtonBackgroundColor: UIColor? = nil,
-        firstButtonTextColor: UIColor? = nil,
-        firstButtonFont: UIFont? = nil,
-        secondButtonText: String? = nil,
-        secondButtonBackgroundColor: UIColor? = nil,
-        secondButtonTextColor: UIColor? = nil,
-        secondButtonFont: UIFont? = nil,
-        textFieldTitle: String? = nil,
-        textFieldTitleColor: UIColor? = nil,
-        textFieldTitleFont: UIFont? = nil,
-        textFieldTitleTextAlignment: NSTextAlignment? = nil,
-        hasTextField: Bool? = nil,
-        textFieldPlaceHolder: String? = nil,
-        textFieldKeyboardType: UIKeyboardType? = nil,
-        textFieldTitleInvisible: Bool? = nil,
-        textFieldInvisible: Bool? = nil,
-        textFieldText: String? = nil) {
-        self.topBoxViewColor = topBoxViewColor
-        self.topTitle = topTitle
-        self.topTitleColor = topTitleColor
-        self.topTitleFont = topTitleFont
-        self.title = title
-        self.titleColor = titleColor
-        self.titleFont = titleFont
-        self.titleTextAlignment = titleTextAlignment
-        self.contentTextViewText = contentTextViewText
-        self.contentTextViewColor = contentTextViewColor
-        self.contentTextViewFont = contentTextViewFont
-        self.contentTextViewAttributed = contentTextViewAttributed
-        self.subTitle = subTitle
-        self.subTitleColor = subTitleColor
-        self.subTitleFont = subTitleFont
-        self.subTitleTextAlignment = subTitleTextAlignment
-        self.firstButtonText = firstButtonText
-        self.firstButtonBackgroundColor = firstButtonBackgroundColor
-        self.firstButtonTextColor = firstButtonTextColor
-        self.firstButtonFont = firstButtonFont
-        self.secondButtonText = secondButtonText
-        self.secondButtonBackgroundColor = secondButtonBackgroundColor
-        self.secondButtonTextColor = secondButtonTextColor
-        self.secondButtonFont = secondButtonFont
-        self.textFieldTitle = textFieldTitle
-        self.textFieldTitleColor = textFieldTitleColor
-        self.textFieldTitleFont = textFieldTitleFont
-        self.textFieldTitleTextAlignment = textFieldTitleTextAlignment
-        self.hasTextField = hasTextField
-        self.textFieldPlaceHolder = textFieldPlaceHolder
-        self.textFieldKeyboardType = textFieldKeyboardType
-        self.textFieldTitleInvisible = textFieldTitleInvisible
-        self.textFieldInvisible = textFieldInvisible
-        self.textFieldText = textFieldText
-    }
-}
-
-public class MatinAlertView: UIView {
-    
-    weak var delegate: MatinAlertDelegate?
-    let mainBoxWidth = CGFloat(280)
-    var topBoxHeight = CGFloat(50)
-    var bottomBoxHeight = CGFloat(45)
-    var titleHeight = CGFloat(0.05)
-    var titleTopMargin = CGFloat(0)
-    var contentHeight = CGFloat(0.05)
-    var contentTopMargin = CGFloat(0.05)
-    var subTitleHeight = CGFloat(0.05)
-    var subTitleTopMargin = CGFloat(0)
-    var textFieldTitleHeight = CGFloat(0.05)
-    var textFieldHeight = CGFloat(0.05)
-    var textFieldTopMargin = CGFloat(0.05)
-    var textFieldTitleInvisible = true
-    var textFieldInvisible = true
-    
-    public override var intrinsicContentSize: CGSize {
-        if textFieldTitleInvisible {
-            textFieldTitleHeight = CGFloat(0.05)
-            textFieldTitleLabel.alpha = 0
-        } else {
-            textFieldTitleHeight = CGFloat(35)
-            textFieldTitleLabel.alpha = 1
-        }
-        if textFieldInvisible {
-            textFieldHeight = CGFloat(0.05)
-            textField.alpha = 0
-        } else {
-            textFieldHeight = CGFloat(35)
-            textField.alpha = 1
-        }
-        var height = topBoxHeight +
-            titleHeight +
-            contentTopMargin +
-            contentHeight +
-            subTitleHeight +
-            textFieldTitleHeight +
-            textFieldTopMargin +
-            textFieldHeight +
-            bottomBoxHeight
-        // Make sure height does not go over the main view height
-        if let parentView = superview {
-            let maximumHeight = parentView.frame.height - 130
-            height = height > maximumHeight ? maximumHeight : height
-        }
-        height = height < 170 ? CGFloat(160) : height
-        return CGSize(width: mainBoxWidth, height: height)
-    }
-    
-    var alertModel: AlertModel? {
+    fileprivate var customStyle: MatinAlert.CustomStyle? {
         didSet {
-            if let textFieldTitleInvisible =
-                alertModel?.textFieldTitleInvisible {
-                self.textFieldTitleInvisible =
-                    textFieldTitleInvisible
+            if let topHeaderView = customStyle?.topHeaderView {
+                if let color = topHeaderView.color {
+                    topBoxView.backgroundColor = color
+                }
+                if let borderWidth = topHeaderView.borderWidth {
+                    topBoxView.layer.borderWidth = borderWidth
+                }
+                if let borderColor = topHeaderView.borderColor {
+                    topBoxView.layer.borderColor = borderColor.cgColor
+                    
+                }
+                if let cornerRadius = topHeaderView.cornerRadius {
+                    topBoxView.layer.cornerRadius = cornerRadius
+                }
             }
-            if let textFieldInvisible =
-                alertModel?.textFieldInvisible {
-                self.textFieldInvisible =
-                    textFieldInvisible
+            
+            if let contentView = customStyle?.contentView {
+                if let color = contentView.color {
+                    mainBoxView.backgroundColor = color
+                }
+                if let borderWidth = contentView.borderWidth {
+                    mainBoxView.layer.borderWidth = borderWidth
+                }
+                if let borderColor = contentView.borderColor {
+                    mainBoxView.layer.borderColor = borderColor.cgColor
+                    
+                }
+                if let cornerRadius = contentView.cornerRadius {
+                    mainBoxView.layer.cornerRadius = cornerRadius
+                }
             }
-            if let topBoxViewColor =
-                alertModel?.topBoxViewColor {
-                topBoxView.backgroundColor = topBoxViewColor
+            
+            if let firstButtonStyle = customStyle?.firstButton {
+                if let font = firstButtonStyle.font {
+                    firstButton.titleLabel?.font = font
+                }
+                if let bgColor = firstButtonStyle.bgColor {
+                    firstButton.backgroundColor = bgColor
+                }
+                if let titleColor = firstButtonStyle.titleColor {
+                    firstButton.setTitleColor(titleColor, for: .normal)
+                }
             }
-            if let topTitle =
-                alertModel?.topTitle,
-               !topTitle.isBlank {
-                topBoxTitleLabel.text = topTitle
+            
+            if let secondButtonStyle = customStyle?.secondButton {
+                if let font = secondButtonStyle.font {
+                    secondButton.titleLabel?.font = font
+                }
+                if let bgColor = secondButtonStyle.bgColor {
+                    secondButton.backgroundColor = bgColor
+                }
+                if let titleColor = secondButtonStyle.titleColor {
+                    secondButton.setTitleColor(titleColor, for: .normal)
+                }
             }
-            if let topTitleColor =
-                alertModel?.topTitleColor {
-                topBoxTitleLabel.textColor = topTitleColor
+        }
+    }
+    
+    fileprivate var data: MatinAlertModel? {
+        didSet {
+            if let topTitle = data?.topTitle {
+                topHeaderTitleLabel.text = topTitle
+                if topTitle.isBlank {
+                    topBoxHeight = CGFloat(0)
+                    var contentText = MatinAlert.CustomTextStyle()
+                    contentText.alignment = .center
+                    contentTableView.customTextStyle = contentText
+                }
             }
-            if let topTitleFont =
-                alertModel?.topTitleFont {
-                topBoxTitleLabel.font = topTitleFont
-            }
-            if let title =
-                alertModel?.title,
-               !title.isBlank {
-                titleLabel.text = title
-                titleLabel.alpha = 1
-                titleHeight =
-                    estimateFrameForText(title, width: 160).height
-                titleHeight = titleHeight < 25
-                    ? 25
-                    : titleHeight
-                print(titleHeight)
-            }
-            if let titleColor = alertModel?.titleColor {
-                titleLabel.textColor = titleColor
-            }
-            if let titleFont = alertModel?.titleFont {
-                titleLabel.font = titleFont
-            }
-            if let titleTextAlignment = alertModel?.titleTextAlignment {
-                titleLabel.textAlignment = titleTextAlignment
-            }
-            if let contentTextViewText =
-                alertModel?.contentTextViewText,
-               !contentTextViewText.isBlank {
-                contentTextView.alpha = 1
-                contentTextView.text = contentTextViewText
-                let width = contentTextViewText.count > 80 &&
-                    contentTextViewText.count < 130
-                    ? CGFloat(220)
-                    : CGFloat(160)
-                let height =
-                    estimateFrameForText(
-                        contentTextViewText,
-                        width: width).height
-                contentTopMargin = 15
-                contentHeight = height < 30 ? 30 : height
-            }
-            if let contentTextViewColor =
-                alertModel?.contentTextViewColor {
-                contentTextView.textColor = contentTextViewColor
-            }
-            if let contentTextViewFont =
-                alertModel?.contentTextViewFont {
-                contentTextView.font = contentTextViewFont
-            }
-            if let contentTextViewAttributed =
-                alertModel?.contentTextViewAttributed {
-                contentTextView.attributedText = contentTextViewAttributed
-            }
-            if let subTitle = alertModel?.subTitle, !subTitle.isBlank {
-                subTitleLabel.text = subTitle
-                subTitleLabel.alpha = 1
-                subTitleHeight =
-                    estimateFrameForText(subTitle, width: 160).height
-            }
-            if let subTitleColor = alertModel?.subTitleColor {
-                subTitleLabel.textColor = subTitleColor
-            }
-            if let subTitleFont = alertModel?.subTitleFont {
-                subTitleLabel.font = subTitleFont
-            }
-            if let subTitleTextAlignment =
-                alertModel?.subTitleTextAlignment {
-                subTitleLabel.textAlignment =
-                    subTitleTextAlignment
-            }
-            if let textFieldTitle =
-                alertModel?.textFieldTitle,
-               !textFieldTitle.isBlank {
-                textFieldTitleLabel.alpha = 1
-                textFieldTitleLabel.text = textFieldTitle
-                let height =
-                    estimateFrameForText(textFieldTitle, width: 160).height
-                textFieldTitleHeight = height < 35 ? 35 : height
-            }
-            if let textFieldTitleColor =
-                alertModel?.textFieldTitleColor {
-                textFieldTitleLabel.textColor = textFieldTitleColor
-            }
-            if let textFieldTitleFont =
-                alertModel?.textFieldTitleFont {
-                textFieldTitleLabel.font = textFieldTitleFont
-            }
-            if let textFieldTitleTextAlignment =
-                alertModel?.textFieldTitleTextAlignment {
-                textFieldTitleLabel.textAlignment =
-                    textFieldTitleTextAlignment
-            }
-            if let textFieldPlaceHolder =
-                alertModel?.textFieldPlaceHolder {
-                textField.placeholder = textFieldPlaceHolder
-            }
-            if let textFieldText =
-                alertModel?.textFieldText {
-                textField.text = textFieldText
-            }
-            if let textFieldKeyboardType =
-                alertModel?.textFieldKeyboardType {
-                textField.keyboardType = textFieldKeyboardType
-            }
-            if let hasTextField =
-                alertModel?.hasTextField, hasTextField {
-                textFieldHeight = 35
-            }
-            if let firstButtonText =
-                alertModel?.firstButtonText, !firstButtonText.isBlank {
+            if let firstButtonTitle = data?.firstButtonTitle {
                 firstButton.alpha = 1
-                firstButton.setTitle(firstButtonText, for: .normal)
+                firstButton.setTitle(firstButtonTitle, for: .normal)
             } else {
                 firstButton.alpha = 0
             }
-            if let firstButtonTextColor =
-                alertModel?.firstButtonTextColor {
-                firstButton.setTitleColor(firstButtonTextColor, for: .normal)
-            }
-            if let firstButtonFont =
-                alertModel?.firstButtonFont {
-                firstButton.titleLabel?.font = firstButtonFont
-            }
-            if let firstButtonBackgroundColor =
-                alertModel?.firstButtonBackgroundColor {
-                firstButton.backgroundColor =
-                    firstButtonBackgroundColor
-            }
-            if let topTitleFont = alertModel?.topTitleFont {
-                topBoxTitleLabel.font = topTitleFont
-            }
-            if let secondButtonText =
-                alertModel?.secondButtonText, !secondButtonText.isBlank {
-                firstButton.alpha = 1
+            if let secondButtonTitle = data?.secondButtonTitle {
                 secondButton.alpha = 1
-                secondButton.setTitle(secondButtonText, for: .normal)
+                secondButton.setTitle(secondButtonTitle, for: .normal)
             } else {
                 secondButton.alpha = 0
             }
-            if let secondButtonTextColor =
-                alertModel?.secondButtonTextColor {
-                secondButton.setTitleColor(secondButtonTextColor, for: .normal)
-            }
-            if let secondButtonFont =
-                alertModel?.secondButtonFont {
-                secondButton.titleLabel?.font = secondButtonFont
-            }
-            if let secondButtonBackgroundColor =
-                alertModel?.secondButtonBackgroundColor {
-                secondButton.backgroundColor =
-                    secondButtonBackgroundColor
-            }
-            if contentHeight < 1 && subTitleHeight < 1 && titleHeight < 40 {
-                titleTopMargin = CGFloat(15)
-            }
-            if contentHeight < 1 && titleHeight < 1 && subTitleHeight < 40 {
-                subTitleTopMargin = CGFloat(15)
-            }
             setupViews()
+            if let contentText = data?.contentText {
+                contentTableView.content = contentText
+            }
+            if let contextTextStyle = customStyle?.contentText {
+                contentTableView.customTextStyle = contextTextStyle
+            }
         }
     }
     
-    var title: String?
     
-    let mainBoxView: UIView = {
+    private let mainBoxView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.clipsToBounds = true
         view.layer.masksToBounds = true
         view.layer.cornerRadius = 5
-        view.backgroundColor = UIColor.white
+        view.backgroundColor = UIColor.systemBackground
         return view
     }()
     
-    let topBoxView: UIView = {
+    private let topBoxView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.clipsToBounds = true
@@ -607,16 +428,7 @@ public class MatinAlertView: UIView {
         return view
     }()
     
-    let contentView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.clipsToBounds = true
-        view.layer.masksToBounds = true
-        view.backgroundColor = .clear
-        return view
-    }()
-    
-    let bottomView: UIView = {
+    private let bottomView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.clipsToBounds = true
@@ -625,7 +437,7 @@ public class MatinAlertView: UIView {
         return view
     }()
     
-    let topBoxTitleLabel: UILabel = {
+    private let topHeaderTitleLabel: UILabel = {
         let label = UILabel()
         label.text = "Notice"
         label.numberOfLines = 2
@@ -636,93 +448,14 @@ public class MatinAlertView: UIView {
         return label
     }()
     
-    let contentTextView: UITextView = {
-        let tv = UITextView()
-        tv.text = ""
-        tv.isEditable = false
-        tv.isScrollEnabled = false
-        tv.textColor = UIColor.grayScale5()
-        tv.backgroundColor = .clear
-        tv.contentInset = UIEdgeInsets(top: -5, left: 0, bottom: 0, right: 0)
-        tv.font = UIFont(name: "Avenir Next", size: 14)
-        return tv
-    }()
-    
-    let titleLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = ""
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.textColor = UIColor.grayScale5()
-        label.layer.masksToBounds = true
-        label.clipsToBounds = true
-        label.font = UIFont(name: "Avenir Next", size: 14)
-        return label
-    }()
-    
-    let subTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = ""
-        label.textColor = UIColor.grayScale4()
-        label.backgroundColor = .clear
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        label.font = UIFont(name: "Avenir Next", size: 14)
-        return label
-    }()
-    
-    let textFieldTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = ""
-        label.textColor = UIColor.grayScale4()
-        label.backgroundColor = .clear
-        label.textAlignment = .left
-        label.numberOfLines = 0
-        label.alpha = 1
-        label.font = UIFont(name: "Avenir Next", size: 14)
-        return label
-    }()
-    
-    let textField: LeftPaddedTextField = {
-        let textField = LeftPaddedTextField()
-        let placeHolderText = "Please enter"
-        textField.textColor = UIColor.blueMain()
-        if let font = UIFont(name: "Avenir Next", size: 16.0) {
-            textField.font = font
-        }
-        if let placeHolderFont =
-            UIFont(name: "AvenirNext-Regular", size: 16.0) {
-            textField.backgroundColor = UIColor.grayScale1()
-            textField.attributedPlaceholder =
-                NSAttributedString(
-                    string: placeHolderText,
-                    attributes:
-                        [
-                            NSAttributedString.Key.foregroundColor:
-                                UIColor.grayMain(),
-                            NSAttributedString.Key.font: placeHolderFont
-                        ]
-                )
-        }
-        textField.addTarget(
-            self,
-            action: #selector(handleTextfieldChanged(_:)),
-            for: .editingChanged)
-        textField.layer.borderColor = UIColor.grayScale2().cgColor
-        textField.layer.borderWidth = 0.8
-        textField.alpha = 1
-        textField.keyboardType = .emailAddress
-        return textField
-    }()
-    
-    let firstButton: UIButton = {
+    private let firstButton: UIButton = {
         let button = UIButton(type: .system)
-        button.backgroundColor = .white
+        button.backgroundColor = UIColor.systemBackground
         button.translatesAutoresizingMaskIntoConstraints = false
         button.clipsToBounds = true
         button.setTitle("Ok", for: .normal)
-        button.setTitleColor(UIColor.blueMain(), for: .normal)
+        button.titleLabel?.font = UIFont(name: "HelveticaNeue-Bold", size: 16)
+        button.setTitleColor(UIColor.grayScale3(), for: .normal)
         button.addTarget(
             self,
             action: #selector(firstButtonClicked),
@@ -730,13 +463,13 @@ public class MatinAlertView: UIView {
         return button
     }()
     
-    let secondButton: UIButton = {
+    private let secondButton: UIButton = {
         let button = UIButton(type: .system)
-        button.backgroundColor = .white
+        button.backgroundColor = UIColor.systemBackground
         button.translatesAutoresizingMaskIntoConstraints = false
         button.clipsToBounds = true
-        button.setTitle("No", for: .normal)
-        button.setTitleColor(UIColor.grayScale4(), for: .normal)
+        button.setTitleColor(UIColor.grayScale3(), for: .normal)
+        button.titleLabel?.font = UIFont(name: "HelveticaNeue-Bold", size: 16)
         button.addTarget(
             self,
             action: #selector(secondButtonClicked),
@@ -765,29 +498,26 @@ public class MatinAlertView: UIView {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        layer.cornerRadius = 3
-        self.applyPlainShadow()
+        layer.cornerRadius = 5
+        applyPlainShadow()
         backgroundColor = UIColor.grayScale3().withAlphaComponent(0.7)
     }
     
-    func setupViews() {
-        guard let _ = alertModel else { return }
-        addSubview(mainBoxView)
-        
-        mainBoxView.addSubview(topBoxView)
-        mainBoxView.addSubview(contentView)
-        mainBoxView.addSubview(bottomView)
-        
-        topBoxView.addSubview(topBoxTitleLabel)
-        contentView.addSubview(titleLabel)
-        contentView.addSubview(contentTextView)
-        contentView.addSubview(contentTextView)
-        contentView.addSubview(subTitleLabel)
-        contentView.addSubview(textFieldTitleLabel)
-        if let hasTextField = alertModel?.hasTextField, hasTextField {
-            contentView.addSubview(textField)
+    private func setupViews() {
+        if let contentText = data?.contentText {
+            let estimatedHeight =
+                estimateFrameForText(contentText, width: 200).height
+            contentHeight = estimatedHeight < contentHeight
+                ? contentHeight
+                : (estimatedHeight > maxContentHeight)
+                ? maxContentHeight
+                : estimatedHeight
         }
-        
+        addSubview(mainBoxView)
+        mainBoxView.addSubview(topBoxView)
+        mainBoxView.addSubview(contentTableView)
+        mainBoxView.addSubview(bottomView)
+        topBoxView.addSubview(topHeaderTitleLabel)
         bottomView.addSubview(firstButton)
         bottomView.addSubview(secondButton)
         
@@ -804,96 +534,55 @@ public class MatinAlertView: UIView {
             right: mainBoxView.rightAnchor,
             heightConstant: topBoxHeight)
         
-        _ = topBoxTitleLabel.anchor(
+        _ = topHeaderTitleLabel.anchor(
             topBoxView.topAnchor,
             left: topBoxView.leftAnchor,
             bottom: topBoxView.bottomAnchor,
             right: topBoxView.rightAnchor)
         
-        _ = contentView.anchor(
+        _ = contentTableView.anchor(
             topBoxView.bottomAnchor,
             left: mainBoxView.leftAnchor,
             bottom: bottomView.topAnchor,
-            right: mainBoxView.rightAnchor)
-        
-        _ = titleLabel.anchor(
-            contentView.topAnchor,
-            left: contentView.leftAnchor,
-            right: contentView.rightAnchor,
-            topConstant: titleTopMargin,
-            leftConstant: 20,
-            rightConstant: 20,
-            heightConstant: titleHeight)
-        
-        _ = contentTextView.anchor(
-            titleLabel.bottomAnchor,
-            left: contentView.leftAnchor,
-            right: contentView.rightAnchor,
-            topConstant: contentTopMargin,
-            leftConstant: 20,
-            rightConstant: 20,
-            heightConstant: contentHeight)
-        
-        _ = subTitleLabel.anchor(
-            contentTextView.bottomAnchor,
-            left: contentView.leftAnchor,
-            right: contentView.rightAnchor,
-            topConstant: subTitleTopMargin,
-            leftConstant: 20,
-            rightConstant: 20,
-            heightConstant: subTitleHeight)
-        
-        _ = textFieldTitleLabel.anchor(
-            subTitleLabel.bottomAnchor,
-            left: contentView.leftAnchor,
-            right: contentView.rightAnchor,
-            leftConstant: 20,
-            rightConstant: 20,
-            heightConstant: textFieldTitleHeight)
-        
-        
-        if let hasTextField =
-            alertModel?.hasTextField,
-           hasTextField {
-            if let textFieldTitle =
-                alertModel?.textFieldTitle,
-               textFieldTitle.isBlank {
-                textFieldTopMargin = 10
-            }
-            _ = textField.anchor(
-                textFieldTitleLabel.bottomAnchor,
-                left: contentView.leftAnchor,
-                right: contentView.rightAnchor,
-                topConstant: textFieldTopMargin,
-                leftConstant: 20,
-                rightConstant: 20,
-                heightConstant: textFieldHeight)
-        }
+            right: mainBoxView.rightAnchor,
+            topConstant: 15,
+            leftConstant: 25,
+            rightConstant: 25,
+            heightConstant: contentHeight + 45
+        )
         
         _ = bottomView.anchor(
+            contentTableView.bottomAnchor,
             left: mainBoxView.leftAnchor,
             bottom: mainBoxView.bottomAnchor,
             right: mainBoxView.rightAnchor,
             heightConstant: bottomBoxHeight)
         
-        if let secondButtonText =
-            alertModel?.secondButtonText,
-           !secondButtonText.isBlank {
-            _ = firstButton.anchor(
-                bottomView.topAnchor,
-                left: bottomView.leftAnchor,
-                bottom: bottomView.bottomAnchor,
-                right: bottomView.centerXAnchor,
-                topConstant: 0.5)
-            
-            _ = secondButton.anchor(
-                bottomView.topAnchor,
-                left: firstButton.rightAnchor,
-                bottom: bottomView.bottomAnchor,
-                right: bottomView.rightAnchor,
-                topConstant: 0.5,
-                leftConstant: 0.5)
-            
+        if let secondButtonTitleLabel = secondButton.titleLabel,
+           let secondButtonText = secondButtonTitleLabel.text {
+            if !secondButtonText.isBlank {
+                _ = firstButton.anchor(
+                    bottomView.topAnchor,
+                    left: bottomView.leftAnchor,
+                    bottom: bottomView.bottomAnchor,
+                    right: bottomView.centerXAnchor,
+                    topConstant: 0.5)
+                
+                _ = secondButton.anchor(
+                    bottomView.topAnchor,
+                    left: firstButton.rightAnchor,
+                    bottom: bottomView.bottomAnchor,
+                    right: bottomView.rightAnchor,
+                    topConstant: 0.5,
+                    leftConstant: 0.5)
+            } else {
+                _ = firstButton.anchor(
+                    bottomView.topAnchor,
+                    left: bottomView.leftAnchor,
+                    bottom: bottomView.bottomAnchor,
+                    right: bottomView.rightAnchor,
+                    topConstant: 0.5)
+            }
         } else {
             _ = firstButton.anchor(
                 bottomView.topAnchor,
@@ -904,20 +593,153 @@ public class MatinAlertView: UIView {
         }
     }
     
-    @objc func firstButtonClicked() {
-        delegate?.firstButtonClicked?(for: self)
-    }
-    
-    @objc func secondButtonClicked() {
+    @objc private func firstButtonClicked() {
         invalidateIntrinsicContentSize()
-        delegate?.secondButtonClicked?(for: self)
+        delegate?.buttonClicked(buttonKind: .confirm)
     }
     
-    @objc func handleTextfieldChanged (_ textField: UITextField) {
-        delegate?.textfieldChanged?(for: self, text: textField.text)
+    @objc private func secondButtonClicked() {
+        invalidateIntrinsicContentSize()
+        delegate?.buttonClicked(buttonKind: .cancel)
     }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+}
+
+
+fileprivate class MatinAlertModel: NSObject {
+    var topTitle: String = "Notice"
+    var contentText: String = ""
+    var firstButtonTitle: String = "Ok"
+    var secondButtonTitle: String? = nil
+}
+
+fileprivate class MatinAlertContentCell: UITableViewCell {
+    lazy private var contentLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = ""
+        label.numberOfLines = 0
+        label.textAlignment = .left
+        label.textColor = UIColor.label
+        label.layer.masksToBounds = true
+        label.clipsToBounds = true
+        label.lineBreakMode = .byWordWrapping
+        label.font = UIFont(name: "Avenir Next", size: 15)
+        return label
+    }()
+    
+    fileprivate func configure(
+        with data: MatinAlertModel,
+        textStyle: MatinAlert.CustomTextStyle?) {
+        contentLabel.text = data.contentText
+        if let alignment = textStyle?.alignment {
+            contentLabel.textAlignment = alignment
+        }
+        if let color = textStyle?.color {
+            contentLabel.textColor = color
+        }
+        if let font = textStyle?.font {
+            contentLabel.font = font
+        }
+        if let font = textStyle?.font {
+            contentLabel.font = font
+        }
+    }
+    
+    override init(style: UITableViewCell.CellStyle,
+                  reuseIdentifier: String?) {
+        super.init(
+            style: style,
+            reuseIdentifier: reuseIdentifier
+        )
+        commonInit()
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        commonInit()
+    }
+    
+    fileprivate func commonInit() -> Void {
+        contentView.addSubview(contentLabel)
+        NSLayoutConstraint.activate([
+            contentLabel.topAnchor.constraint(
+                equalTo: contentView.topAnchor,
+                constant: 8),
+            contentLabel.leadingAnchor.constraint(
+                equalTo: contentView.leadingAnchor,
+                constant: 8),
+            contentLabel.trailingAnchor.constraint(
+                equalTo: contentView.trailingAnchor,
+                constant: -8),
+            contentLabel.bottomAnchor.constraint(
+                equalTo: contentView.bottomAnchor,
+                constant: -8),
+        ])
+    }
+}
+
+fileprivate class MatinAlertContentTableView:
+    UITableView,
+    UITableViewDelegate,
+    UITableViewDataSource {
+    private let tableViewCellId = "tableViewCellId"
+    fileprivate var customTextStyle: MatinAlert.CustomTextStyle? {
+        didSet {
+            if let bgColor = customTextStyle?.bgColor {
+                self.backgroundColor = bgColor
+            }
+            reloadData()
+        }
+    }
+    fileprivate var content: String? {
+        didSet {
+            reloadData()
+        }
+    }
+    override init(frame: CGRect, style: UITableView.Style) {
+        super.init(frame: frame, style: style)
+        delegate = self
+        dataSource = self
+        allowsSelection = false
+        bounces = false
+        register(
+        MatinAlertContentCell.self,
+        forCellReuseIdentifier: tableViewCellId)
+        separatorStyle = .none
+        rowHeight = UITableView.automaticDimension
+        estimatedRowHeight = 44
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    func numberOfSections(
+        in tableView: UITableView)
+    -> Int { 1 }
+    func tableView(
+        _ tableView: UITableView,
+        numberOfRowsInSection section: Int)
+    -> Int {1}
+    func tableView(
+        _ tableView: UITableView,
+        cellForRowAt indexPath: IndexPath)
+    -> UITableViewCell {
+        let cell =
+            tableView.dequeueReusableCell(
+                withIdentifier: tableViewCellId,
+                for: indexPath)
+            as! MatinAlertContentCell
+        let data = MatinAlertModel()
+        data.contentText = content ?? ""
+        if let bgColor = customTextStyle?.bgColor {
+            cell.contentView.backgroundColor = bgColor
+        }
+        cell.configure(with: data, textStyle: customTextStyle)
+        return cell
     }
 }
