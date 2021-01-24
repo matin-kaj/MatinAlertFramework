@@ -14,9 +14,11 @@
 		04DE930F259E81FC00341C80 /* UITextFieldExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DE930E259E81FC00341C80 /* UITextFieldExtensions.swift */; };
 		04DE9312259E836300341C80 /* UIViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DE9311259E836300341C80 /* UIViewExtensions.swift */; };
 		04DE9315259E892D00341C80 /* UIViewControllerExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DE9314259E892D00341C80 /* UIViewControllerExtensions.swift */; };
+		65C7C0E17F4DB52DBB22293B /* Pods_MatinAlertFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 034497CD3A983F245A310FA5 /* Pods_MatinAlertFramework.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		034497CD3A983F245A310FA5 /* Pods_MatinAlertFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MatinAlertFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		04DE92F7259E714D00341C80 /* MatinAlertFramework.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MatinAlertFramework.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		04DE92FA259E714D00341C80 /* MatinAlertFramework.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatinAlertFramework.h; sourceTree = "<group>"; };
 		04DE92FB259E714D00341C80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -26,6 +28,8 @@
 		04DE930E259E81FC00341C80 /* UITextFieldExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITextFieldExtensions.swift; sourceTree = "<group>"; };
 		04DE9311259E836300341C80 /* UIViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewExtensions.swift; sourceTree = "<group>"; };
 		04DE9314259E892D00341C80 /* UIViewControllerExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewControllerExtensions.swift; sourceTree = "<group>"; };
+		639815E21396D9050D34EAA2 /* Pods-MatinAlertFramework.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MatinAlertFramework.debug.xcconfig"; path = "Target Support Files/Pods-MatinAlertFramework/Pods-MatinAlertFramework.debug.xcconfig"; sourceTree = "<group>"; };
+		EAF2CEEC2C739C946CA37B49 /* Pods-MatinAlertFramework.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MatinAlertFramework.release.xcconfig"; path = "Target Support Files/Pods-MatinAlertFramework/Pods-MatinAlertFramework.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				65C7C0E17F4DB52DBB22293B /* Pods_MatinAlertFramework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,6 +49,8 @@
 			children = (
 				04DE92F9259E714D00341C80 /* MatinAlertFramework */,
 				04DE92F8259E714D00341C80 /* Products */,
+				AA6DFAB0237B6C27BAB1C708 /* Pods */,
+				8CFA7C48C60F18A385794A4D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -78,6 +85,24 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
+		8CFA7C48C60F18A385794A4D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				034497CD3A983F245A310FA5 /* Pods_MatinAlertFramework.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		AA6DFAB0237B6C27BAB1C708 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				639815E21396D9050D34EAA2 /* Pods-MatinAlertFramework.debug.xcconfig */,
+				EAF2CEEC2C739C946CA37B49 /* Pods-MatinAlertFramework.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -96,6 +121,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 04DE92FF259E714D00341C80 /* Build configuration list for PBXNativeTarget "MatinAlertFramework" */;
 			buildPhases = (
+				8532FE9AA98B456B5F8FBD18 /* [CP] Check Pods Manifest.lock */,
 				04DE92F2259E714D00341C80 /* Headers */,
 				04DE92F3259E714D00341C80 /* Sources */,
 				04DE92F4259E714D00341C80 /* Frameworks */,
@@ -151,6 +177,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8532FE9AA98B456B5F8FBD18 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-MatinAlertFramework-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		04DE92F3259E714D00341C80 /* Sources */ = {
@@ -293,6 +344,7 @@
 		};
 		04DE9300259E714D00341C80 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 639815E21396D9050D34EAA2 /* Pods-MatinAlertFramework.debug.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -322,6 +374,7 @@
 		};
 		04DE9301259E714D00341C80 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = EAF2CEEC2C739C946CA37B49 /* Pods-MatinAlertFramework.release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
