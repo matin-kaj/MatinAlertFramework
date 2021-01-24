@@ -11,7 +11,7 @@ Pod::Spec.new do |spec|
   spec.platform     = :ios, "13.0"
   spec.source       = { :git => "https://github.com/matin-kaj/MatinAlertFramework.git", :tag => "1.0.2" }
   spec.source_files = "MatinAlertFramework/**/*"
-  spec.exclude_files = "MatinAlertFramework/*.plist"
+  spec.exclude_files = "MatinAlertFramework/**/*.plist"
   spec.swift_versions = "5.0"
 
 
