@@ -58,12 +58,12 @@ open class MatinAlert: UIViewController {
     }
 
     public struct CustomStyle {
-        var topHeaderView: CustomViewStyle?
-        var contentView: CustomViewStyle?
-        var topHeaderText: CustomTextStyle?
-        var contentText: CustomTextStyle?
-        var firstButton: CustomButtonStyle?
-        var secondButton: CustomButtonStyle?
+        public var topHeaderView: CustomViewStyle?
+        public var contentView: CustomViewStyle?
+        public var topHeaderText: CustomTextStyle?
+        public var contentText: CustomTextStyle?
+        public var firstButton: CustomButtonStyle?
+        public var secondButton: CustomButtonStyle?
         public init() {}
     }
     var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
