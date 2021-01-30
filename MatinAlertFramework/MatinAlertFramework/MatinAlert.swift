@@ -46,6 +46,35 @@ open class MatinAlert: UIViewController {
         case custom(style: CustomStyle)
     }
     
+    public struct CustomStyle {
+        /** This prop holds the style of top header box */
+        public var topHeaderView: CustomViewStyle?
+        /** This prop holds the style of top header's text */
+        public var topHeaderText: CustomTextStyle?
+        /** This prop holds the style of the main content box view */
+        public var contentView: CustomViewStyle?
+        /** This prop holds the style of main content's text */
+        public var contentText: CustomTextStyle?
+        /** This prop holds the style of the first button */
+        public var firstButton: CustomButtonStyle?
+        /** This prop holds the style of the second button */
+        public var secondButton: CustomButtonStyle?
+        public init() {}
+    }
+    
+    /** The callback instance for buttonAction */
+    var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
+    /** The instance of  MatinAlertView that wrap the entire alert view */
+    fileprivate var matinAlertView: MatinAlertView!
+    /** The instance of  gray overlay view that will be shown under the main alert*/
+    fileprivate let overlayView = UIView()
+    /** Retaining itself strongly so can exist without strong refrence */
+    fileprivate var strongSelf: MatinAlert?
+    /** The instance of CustomStyle that holds the custom style */
+    fileprivate var alertStyle: CustomStyle?
+    /** The instance of MatinAlertModel that holds the bag of data including the style and the context */
+    fileprivate var alertData: MatinAlertModel?
+    
     public struct CustomTextStyle {
         public var alignment: NSTextAlignment?
         public var bgColor: UIColor?
@@ -68,34 +97,6 @@ open class MatinAlert: UIViewController {
         public var cornerRadius: CGFloat?
         public init() {}
     }
-    
-    public struct CustomStyle {
-        /** This prop holds the style of top header box */
-        public var topHeaderView: CustomViewStyle?
-        /** This prop holds the style of top header's text */
-        public var topHeaderText: CustomTextStyle?
-        /** This prop holds the style of the main content box view */
-        public var contentView: CustomViewStyle?
-        /** This prop holds the style of main content's text */
-        public var contentText: CustomTextStyle?
-        /** This prop holds the style of the first button */
-        public var firstButton: CustomButtonStyle?
-        /** This prop holds the style of the second button */
-        public var secondButton: CustomButtonStyle?
-        public init() {}
-    }
-    
-    var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
-    /** The instance of  MatinAlertView that wrap the entire alert view */
-    fileprivate var matinAlertView: MatinAlertView!
-    /** The instance of  gray overlay view that will be shown under the main alert*/
-    fileprivate let overlayView = UIView()
-    /** Retaining itself strongly so can exist without strong refrence */
-    fileprivate var strongSelf: MatinAlert?
-    /** The instance of CustomStyle that holds the custom style */
-    fileprivate var alertStyle: CustomStyle?
-    /** The instance of MatinAlertModel that holds the bag of data including the style and the context */
-    fileprivate var alertData: MatinAlertModel?
     
     // MARK: Initialization
     
