@@ -9,20 +9,20 @@ import Foundation
 import UIKit
 
 
-/** The MatinAlertDelegate protocol. Used to receive on tap event.  */
+/// The MatinAlertDelegate protocol. Used to receive on tap event.
 public protocol MatinAlertDelegate: NSObjectProtocol {
-    /** Sent to the delegate every time a button gets tapped.
-     * @discussion: This method gets triggered for both confirm or cancel buttons (first & second buttons).
-     * @param: buttonKind The value of ButtonKind enum  that has been tapped.
-     */
+    ///  Sent to the delegate every time a button gets tapped.
+    /// -  This method gets triggered for both confirm or cancel buttons (first & second buttons).
+    /// - Parameters:
+    ///   - buttonKind: The value of ButtonKind enum that has been tapped.
     func buttonClicked(buttonKind: MatinAlert.ButtonKind)
 }
 
 open class MatinAlert: UIViewController {
     public enum ButtonKind {
-        /** First button or main button when there is only one button. */
+        /// First button or main button when there is only one button.
         case confirm
-        /** Second button */
+        /// Second button
         case cancel
     }
     
@@ -35,11 +35,12 @@ open class MatinAlert: UIViewController {
         case warning
         /** Uses (r: 0.05, g: 0.48, b: 0.79,) color for the top header box. */
         case info
-        /** Uses the user's predefined styles for the pop up
-         * @see setDefaultStyle
-         * Should be used after calling MatinAlert.setDefaultStyle to set your desired styles.
-         * @Note: the predefined style will be saved as a singleton so you can use the same
-         * custom style throughout the application. */
+        /// Uses the user's predefined styles for the pop up
+        /// @see setDefaultStyle
+        /// - Important: Should be used after calling `MatinAlert.setDefaultStyle`
+        ///   to set the persistence custom styles.
+        /// - The predefined style will be saved as a singleton so you can use the same
+        /// custom style throughout the application.
         case predefined
         /** Uses the custom style for the current instance of MatinAlert */
         case custom(style: CustomStyle)
@@ -138,15 +139,16 @@ open class MatinAlert: UIViewController {
     
     // MARK: Displaying
     
-    /** Displays the alert pop up
-     *  Can be used with optional params,
-     *  Will use alertType "info" as a default.
-     *  Will use "OK"  as a main button title.
-     *  @params:
-     *      - contentText:  Text of the alert, the content view will become scrollable automatically
-     *            when the height of the text is larger than the height of the pop up.
-     *      - action:  Optional action callback when the confrim (first button) gets tapped.
-     */
+    /// Displays the alert pop up
+    ///
+    /// Can be used with optional params,
+    /// Will use alertType "info" as a default.
+    /// Will use "OK"  as a main button title.
+    /// - Parameters:
+    ///    - contentText: Text of the alert, the content view will become scrollable automatically
+    ///           when the height of the text is larger than the height of the pop up.
+    ///    - action: Optional action callback when the confrim (first button) gets tapped.
+    
     open func display(
         withContent contentText: String,
         action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
@@ -158,19 +160,19 @@ open class MatinAlert: UIViewController {
                   action: action)
     }
     
-    /** Displays the alert pop up
-     *  @params:
-     *        - title:  The title of the alert, will be shown in top header box view.
-     *        - contentText:  Text of the alert, the content view will become scrollable automatically
-     *               when the height of the text is larger than the height of the pop up.
-     *        - alertType:  The type of the alert such as info, error, warning and etc.
-     *                  Will use alertType "info" if no alertType specified.
-     *                  @see AlertType enum
-     *        - firstButtonTitle:  The title of the first button. Will use "OK"  as a main button title
-     *                     if no button specified.
-     *        - secondButtonTitle:  The title of the second button.
-     *        - action:  Optional action callback when the button gets tapped. (first or second button)
-     */
+    /// Displays the alert pop up
+    ///
+    /// - Parameters:
+    ///     - title: The title of the alert, will be shown in top header box view.
+    ///     - contentText: Text of the alert, the content view will become scrollable automatically
+    ///         when the height of the text is larger than the height of the pop up.
+    ///     - alertType: The type of the alert such as info, error, warning and etc. Will use alertType
+    ///         "info" if no alertType specified.
+    ///         @see AlertType enum
+    ///     - firstButtonTitle: The title of the first button. Will use "OK"  as a main button title
+    ///         if no button specified.
+    ///     - secondButtonTitle: Text of the alert, the content view will become scrollable automatically
+    ///     - action: Optional action callback when the button gets tapped. (first or second button)
     open func display(
         _ title: String,
         contentText: String?,
@@ -260,8 +262,8 @@ open class MatinAlert: UIViewController {
         }
     }
     
-    /** Handles the style whan dark mode is on
-     @warning: will not react on dark mode if the alert is using the custom style. */
+    /// Handles the style whan dark mode is on
+     /// - Important: Will not react on dark mode if the alert is using the custom style.
     private func setDarkModeForCustomStyle(
         userCustomStyle: CustomStyle) -> CustomStyle {
         var customStyle = CustomStyle()
