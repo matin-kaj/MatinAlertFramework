@@ -90,6 +90,7 @@ open class MatinAlert: UIViewController {
     }
     
     @objc private func deviceRotated() {
+        if (self.matinAlertView == nil) {return}
         dismissAlert(completion: { [weak self] in
             guard let unwrappedSelf = self else { return }
             unwrappedSelf.setupViews()
@@ -104,30 +105,32 @@ open class MatinAlert: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    open func showAlert(
+    open func display(
         withContent text: String,
-        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> MatinAlert {
+        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
         showAlert("",
                   contentText: text,
                   alertType: .info,
-                  firstButtonTitle: nil, secondButtonTitle: nil)
-        return self
+                  firstButtonTitle: nil,
+                  secondButtonTitle: nil,
+                  action: action)
     }
     
-    open func showAlert(
+    open func display(
         _ title: String,
         contentText: String?,
         alertType: AlertType? = nil,
         firstButtonTitle: String? = nil,
         secondButtonTitle: String? = nil,
-        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> MatinAlert {
+        action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
         showAlert(
             title,
             contentText: contentText,
             alertType: alertType ?? .info,
             firstButtonTitle: firstButtonTitle,
-            secondButtonTitle: secondButtonTitle)
-        return self
+            secondButtonTitle: secondButtonTitle,
+            action: action
+        )
     }
     
     private func showAlert(
@@ -138,20 +141,24 @@ open class MatinAlert: UIViewController {
         secondButtonTitle: String?,
         action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
         buttonAction = action
-        if let window: UIWindow =
-            UIApplication.shared.windows.filter({$0.isKeyWindow}).first {
-            window.addSubview(view)
-            window.bringSubviewToFront(view)
-            view.frame = window.bounds
-            let data = MatinAlertModel()
-            data.topTitle = title
-            data.contentText = contentText ?? ""
-            data.firstButtonTitle = firstButtonTitle ?? "OK"
-            data.secondButtonTitle = secondButtonTitle
-            data.topTitle = title
-            alertData = data
-            alertStyle = getStyle(for: alertType)
-            setupViews()
+        // wait until window is avaiable and is the key window for the app.
+        DispatchQueue.main.async { [weak self] in
+            guard let unwrappedSelf = self else { return }
+            if let window: UIWindow =
+                UIApplication.shared.windows.filter({$0.isKeyWindow}).first {
+                window.addSubview(unwrappedSelf.view)
+                window.bringSubviewToFront(unwrappedSelf.view)
+                unwrappedSelf.view.frame = window.bounds
+                let data = MatinAlertModel()
+                data.topTitle = title
+                data.contentText = contentText ?? ""
+                data.firstButtonTitle = firstButtonTitle ?? "OK"
+                data.secondButtonTitle = secondButtonTitle
+                data.topTitle = title
+                unwrappedSelf.alertData = data
+                unwrappedSelf.alertStyle = unwrappedSelf.getStyle(for: alertType)
+                unwrappedSelf.setupViews()
+            }
         }
     }
     
@@ -180,7 +187,7 @@ open class MatinAlert: UIViewController {
                 MatinAlertDefaultStyle.sharedInstance.defaultAlertStyle {
                 return setDarkModeForCustomStyle(userCustomStyle: defaultAlertStyle)
             } else {
-                print("MatinAlert: You need to call MatinAlert.setDefaultStyle before calling showAlert")
+                print("MatinAlert: You need to call MatinAlert.setDefaultStyle before calling show")
                 return getStyle(for: .info)
             }
         case let .custom(userCustomStyle):
@@ -259,6 +266,7 @@ open class MatinAlert: UIViewController {
     private func dismissAlert(
         completion: (() -> Void)? = nil,
         animated: Bool? = true) {
+        if (self.matinAlertView == nil) {return}
         if (animated ?? true) {
             UIView.animate(
                 withDuration: 0.2,
