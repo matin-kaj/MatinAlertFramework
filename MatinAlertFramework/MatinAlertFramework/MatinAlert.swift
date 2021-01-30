@@ -9,7 +9,7 @@ import Foundation
 import UIKit
 
 
-/** The MatinAlertDelegate protocol. Used to receive on tap event. */
+/** The MatinAlertDelegate protocol. Used to receive on tap event.  */
 public protocol MatinAlertDelegate: NSObjectProtocol {
     /** Sent to the delegate every time a button gets tapped.
      * @discussion: This method gets triggered for both confirm or cancel buttons (first & second buttons).
