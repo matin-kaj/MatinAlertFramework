@@ -9,6 +9,7 @@ import Foundation
 import UIKit
 
 
+/** The MatinAlertDelegate protocol. Used to receive on tap event. */
 public protocol MatinAlertDelegate: NSObjectProtocol {
     /** Sent to the delegate every time a button gets tapped.
      * @discussion: This method gets triggered for both confirm or cancel buttons (first & second buttons).
@@ -136,7 +137,7 @@ open class MatinAlert: UIViewController {
     }
     
     // MARK: Displaying
-     
+    
     /** Displays the alert pop up
      *  Can be used with optional params,
      *  Will use alertType "info" as a default.
@@ -280,7 +281,10 @@ open class MatinAlert: UIViewController {
     }
     
     private func setupViews() {
-        if let window = UIApplication.shared.windows.filter({$0.isKeyWindow}).first {
+        if let window = UIApplication
+            .shared
+            .windows
+            .filter({$0.isKeyWindow}).first {
             window.endEditing(true)
             overlayView.backgroundColor = UIColor(white: 0, alpha: 0.65)
             window.addSubview(overlayView)
@@ -525,7 +529,9 @@ private class MatinAlertView: UIView {
         label.textColor = .white
         label.backgroundColor = .clear
         label.textAlignment = .center
-        label.font = UIFont(name: "HelveticaNeue-Bold", size: 16)
+        label.font = UIFont(
+            name: "HelveticaNeue-Bold",
+            size: 16)
         return label
     }()
     
@@ -535,7 +541,9 @@ private class MatinAlertView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.clipsToBounds = true
         button.setTitle("Ok", for: .normal)
-        button.titleLabel?.font = UIFont(name: "HelveticaNeue-Bold", size: 16)
+        button.titleLabel?.font = UIFont(
+            name: "HelveticaNeue-Bold",
+            size: 16)
         button.setTitleColor(UIColor.grayScale3(), for: .normal)
         button.addTarget(
             self,
@@ -550,7 +558,9 @@ private class MatinAlertView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.clipsToBounds = true
         button.setTitleColor(UIColor.grayScale3(), for: .normal)
-        button.titleLabel?.font = UIFont(name: "HelveticaNeue-Bold", size: 16)
+        button.titleLabel?.font = UIFont(
+            name: "HelveticaNeue-Bold",
+            size: 16)
         button.addTarget(
             self,
             action: #selector(secondButtonClicked),
