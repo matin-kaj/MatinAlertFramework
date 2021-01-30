@@ -10,30 +10,40 @@ import UIKit
 
 
 public protocol MatinAlertDelegate: NSObjectProtocol {
+    /** Sent to the delegate every time a button gets tapped.
+     * @discussion: This method gets triggered for both confirm or cancel buttons (first & second buttons).
+     * @param: buttonKind The value of ButtonKind enum  that has been tapped.
+     */
     func buttonClicked(buttonKind: MatinAlert.ButtonKind)
-}
-
-private class MatinAlertDefaultStyle: NSObject {
-    static let sharedInstance = MatinAlertDefaultStyle()
-    private override init() { }
-    var defaultAlertStyle: MatinAlert.CustomStyle?
 }
 
 open class MatinAlert: UIViewController {
     public enum ButtonKind {
+        /** First button or main button when there is only one button. */
         case confirm
+        /** Second button */
         case cancel
     }
-
+    
     public enum AlertType {
+        /** Uses the systemGreen color for the top header box. */
         case success
+        /** Uses the systemRed color for the top header box. */
         case error
+        /** Uses the systemOrange color for the top header box. */
         case warning
+        /** Uses (r: 0.05, g: 0.48, b: 0.79,) color for the top header box. */
         case info
+        /** Uses the user's predefined styles for the pop up
+         * @see setDefaultStyle
+         * Should be used after calling MatinAlert.setDefaultStyle to set your desired styles.
+         * @Note: the predefined style will be saved as a singleton so you can use the same
+         * custom style throughout the application. */
         case predefined
+        /** Uses the custom style for the current instance of MatinAlert */
         case custom(style: CustomStyle)
     }
-
+    
     public struct CustomTextStyle {
         public var alignment: NSTextAlignment?
         public var bgColor: UIColor?
@@ -41,14 +51,14 @@ open class MatinAlert: UIViewController {
         public var font: UIFont?
         public init() {}
     }
-
+    
     public struct CustomButtonStyle {
         public var font: UIFont?
         public var bgColor: UIColor?
         public var titleColor: UIColor?
         public init() {}
     }
-
+    
     public struct CustomViewStyle {
         public var color: UIColor?
         public var borderWidth: CGFloat?
@@ -56,22 +66,36 @@ open class MatinAlert: UIViewController {
         public var cornerRadius: CGFloat?
         public init() {}
     }
-
+    
     public struct CustomStyle {
+        /** This prop holds the style of top header box */
         public var topHeaderView: CustomViewStyle?
-        public var contentView: CustomViewStyle?
+        /** This prop holds the style of top header's text */
         public var topHeaderText: CustomTextStyle?
+        /** This prop holds the style of the main content box view */
+        public var contentView: CustomViewStyle?
+        /** This prop holds the style of main content's text */
         public var contentText: CustomTextStyle?
+        /** This prop holds the style of the first button */
         public var firstButton: CustomButtonStyle?
+        /** This prop holds the style of the second button */
         public var secondButton: CustomButtonStyle?
         public init() {}
     }
+    
     var buttonAction:((_ buttonKind: ButtonKind) -> Void)? = nil
+    /** The instance of  MatinAlertView that wrap the entire alert view */
     fileprivate var matinAlertView: MatinAlertView!
+    /** The instance of  gray overlay view that will be shown under the main alert*/
     fileprivate let overlayView = UIView()
+    /** Retaining itself strongly so can exist without strong refrence */
     fileprivate var strongSelf: MatinAlert?
-    fileprivate var alertData: MatinAlertModel?
+    /** The instance of CustomStyle that holds the custom style */
     fileprivate var alertStyle: CustomStyle?
+    /** The instance of MatinAlertModel that holds the bag of data including the style and the context */
+    fileprivate var alertData: MatinAlertModel?
+    
+    // MARK: Initialization
     
     public required init() {
         super.init(nibName: nil, bundle: nil)
@@ -82,12 +106,20 @@ open class MatinAlert: UIViewController {
         self.view.backgroundColor =
             UIColor.grayScale1().withAlphaComponent(0.7)
         strongSelf = self
+        /** Observering the device rotation in order to re-layout the existing alert */
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(deviceRotated),
             name: UIDevice.orientationDidChangeNotification,
             object: nil)
     }
+    
+    required public init(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    // MARK: Device Rotated
     
     @objc private func deviceRotated() {
         if (self.matinAlertView == nil) {return}
@@ -97,25 +129,47 @@ open class MatinAlert: UIViewController {
         }, animated: false)
     }
     
+    // MARK: Device Rotated
+    
     public static func setDefaultStyle(customStyle: CustomStyle) {
         MatinAlertDefaultStyle.sharedInstance.defaultAlertStyle = customStyle
     }
     
-    required public init(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
+    // MARK: Displaying
+     
+    /** Displays the alert pop up
+     *  Can be used with optional params,
+     *  Will use alertType "info" as a default.
+     *  Will use "OK"  as a main button title.
+     *  @params:
+     *      - contentText:  Text of the alert, the content view will become scrollable automatically
+     *            when the height of the text is larger than the height of the pop up.
+     *      - action:  Optional action callback when the confrim (first button) gets tapped.
+     */
     open func display(
-        withContent text: String,
+        withContent contentText: String,
         action: ((_ buttonKind: ButtonKind) -> Void)? = nil) -> Void {
         showAlert("",
-                  contentText: text,
+                  contentText: contentText,
                   alertType: .info,
                   firstButtonTitle: nil,
                   secondButtonTitle: nil,
                   action: action)
     }
     
+    /** Displays the alert pop up
+     *  @params:
+     *        - title:  The title of the alert, will be shown in top header box view.
+     *        - contentText:  Text of the alert, the content view will become scrollable automatically
+     *               when the height of the text is larger than the height of the pop up.
+     *        - alertType:  The type of the alert such as info, error, warning and etc.
+     *                  Will use alertType "info" if no alertType specified.
+     *                  @see AlertType enum
+     *        - firstButtonTitle:  The title of the first button. Will use "OK"  as a main button title
+     *                     if no button specified.
+     *        - secondButtonTitle:  The title of the second button.
+     *        - action:  Optional action callback when the button gets tapped. (first or second button)
+     */
     open func display(
         _ title: String,
         contentText: String?,
@@ -133,6 +187,15 @@ open class MatinAlert: UIViewController {
         )
     }
     
+    /** Stores the predefined custom style.
+     * @note: This style will persist until it gets overriden again */
+    private class MatinAlertDefaultStyle: NSObject {
+        static let sharedInstance = MatinAlertDefaultStyle()
+        private override init() { }
+        var defaultAlertStyle: MatinAlert.CustomStyle?
+    }
+    
+    /** Setups the view and displays the alert */
     private func showAlert(
         _ title: String,
         contentText: String?,
@@ -162,6 +225,7 @@ open class MatinAlert: UIViewController {
         }
     }
     
+    /** Returns the style corresponding to the alertType  */
     private func getStyle(for alertType: AlertType ) -> CustomStyle {
         var topHeaderView = CustomViewStyle()
         var customStyle = CustomStyle()
@@ -195,6 +259,8 @@ open class MatinAlert: UIViewController {
         }
     }
     
+    /** Handles the style whan dark mode is on
+     @warning: will not react on dark mode if the alert is using the custom style. */
     private func setDarkModeForCustomStyle(
         userCustomStyle: CustomStyle) -> CustomStyle {
         var customStyle = CustomStyle()
@@ -295,6 +361,7 @@ open class MatinAlert: UIViewController {
     
     private func cleanUp() -> Void {
         self.matinAlertView = nil
+        /** Releasing strong refrence. */
         self.strongSelf = nil
         NotificationCenter.default.removeObserver(
             self,
@@ -302,6 +369,7 @@ open class MatinAlert: UIViewController {
             object: nil)
     }
 }
+
 
 extension MatinAlert: MatinAlertDelegate {
     public func buttonClicked(buttonKind: ButtonKind) {
@@ -312,6 +380,8 @@ extension MatinAlert: MatinAlertDelegate {
         }
     }
 }
+
+// MARK: Private methods
 
 private class MatinAlertView: UIView {
     fileprivate weak var delegate: MatinAlertDelegate?
@@ -718,8 +788,8 @@ fileprivate class MatinAlertContentTableView:
         allowsSelection = false
         bounces = false
         register(
-        MatinAlertContentCell.self,
-        forCellReuseIdentifier: tableViewCellId)
+            MatinAlertContentCell.self,
+            forCellReuseIdentifier: tableViewCellId)
         separatorStyle = .none
         rowHeight = UITableView.automaticDimension
         estimatedRowHeight = 44
