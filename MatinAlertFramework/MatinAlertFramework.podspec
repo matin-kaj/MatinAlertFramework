@@ -3,7 +3,7 @@ Pod::Spec.new do |spec|
 
   spec.name         = "MatinAlertFramework"
   spec.version      = "1.0.3"
-  spec.summary      = "This is a customizable alert framework. This framework allows you to use scrollable alert types such as success, error, warning and info, or even configure your own custom alert styles."
+  spec.summary      = "This is a customizable alert framework. This framework allows you to use scrollable alert types."
   spec.description  = "This framework allows you to use scrollable alert types such as success, error, warning and info, or even configure your own custom alert styles. Scrollable Alert"
   spec.homepage     = "https://github.com/matin-kaj/MatinAlertFramework"
   spec.license      = "MIT"
