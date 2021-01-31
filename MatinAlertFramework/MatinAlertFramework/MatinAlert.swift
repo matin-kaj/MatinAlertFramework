@@ -421,6 +421,22 @@ private class MatinAlertView: UIView {
                 }
             }
             
+            if let topHeaderText = customStyle?.topHeaderText {
+                if let color = topHeaderText.color {
+                    topHeaderTitleLabel.textColor = color
+                }
+                if let alignment = topHeaderText.alignment {
+                    topHeaderTitleLabel.textAlignment = alignment
+                }
+                if let bgColor = topHeaderText.bgColor {
+                    topHeaderTitleLabel.backgroundColor = bgColor
+                    
+                }
+                if let font = topHeaderText.font {
+                    topHeaderTitleLabel.font = font
+                }
+            }
+            
             if let contentView = customStyle?.contentView {
                 if let color = contentView.color {
                     mainBoxView.backgroundColor = color
@@ -632,7 +648,9 @@ private class MatinAlertView: UIView {
             topBoxView.topAnchor,
             left: topBoxView.leftAnchor,
             bottom: topBoxView.bottomAnchor,
-            right: topBoxView.rightAnchor)
+            right: topBoxView.rightAnchor,
+            leftConstant: 25,
+            rightConstant: 25)
         
         _ = contentTableView.anchor(
             topBoxView.bottomAnchor,
@@ -642,7 +660,7 @@ private class MatinAlertView: UIView {
             topConstant: 15,
             leftConstant: 25,
             rightConstant: 25,
-            heightConstant: contentHeight + 45
+            heightConstant: contentHeight + 30
         )
         
         _ = bottomView.anchor(
