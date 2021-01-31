@@ -8,7 +8,6 @@
 import UIKit
 
 class LeftPaddedTextField: UITextField {
-    
     override func textRect(forBounds bounds: CGRect) -> CGRect {
         return CGRect(
             x: bounds.origin.x + 10,

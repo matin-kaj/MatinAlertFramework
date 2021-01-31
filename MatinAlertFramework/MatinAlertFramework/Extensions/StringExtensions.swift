@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 extension String {
     var isBlank: Bool {
         get {
